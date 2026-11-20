@@ -13,18 +13,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Todo</title>
+    <title>Toodles Doodles</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 
 <body>
     <main>
-        <h1>Todo</h1>
+        <h1>Todo App!</h1>
 
         <form hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
             hx-on::after-request="if (event.detail.successful) this.reset()">
-            <input type="text" name="title" placeholder="What needs doing?" required autofocus autocomplete="off">
+            <input type="text" name="title" placeholder="Add a todo here!" required autofocus autocomplete="off">
             <button type="submit">Add</button>
         </form>
 

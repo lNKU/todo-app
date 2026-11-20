@@ -1,0 +1,37 @@
+{{define "todo-item"}}
+<li class="todo{{if .Done}} done{{end}}">
+    <input type="checkbox" {{if .Done}}checked{{end}} hx-post="/todos/{{.ID}}/toggle" hx-target="closest li"
+        hx-swap="outerHTML">
+    <span class="title">{{.Title}}</span>
+    <button class="delete" aria-label="Delete" hx-delete="/todos/{{.ID}}" hx-target="closest li"
+        hx-swap="outerHTML swap:200ms">&times;</button>
+</li>
+{{end}}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Todo</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+
+<body>
+    <main>
+        <h1>Todo</h1>
+
+        <form hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
+            hx-on::after-request="if (event.detail.successful) this.reset()">
+            <input type="text" name="title" placeholder="What needs doing?" required autofocus autocomplete="off">
+            <button type="submit">Add</button>
+        </form>
+
+        <ul id="todo-list">
+            {{range .Todos}}{{template "todo-item" .}}{{end}}
+        </ul>
+    </main>
+</body>
+
+</html>

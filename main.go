@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -32,11 +33,18 @@ func main() {
 	// a broken template should stop the program immediately.
 	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
 
+	// SQLite creates the database file but not its folder, so make sure db/ exists.
+	// MkdirAll does nothing if the folder is already there. 0o755 means the owner
+	// can read/write/enter it and everyone else can read/enter it.
+	if err := os.MkdirAll("db", 0o755); err != nil {
+		log.Fatal(err)
+	}
+
 	// sql.Open does NOT connect; it only prepares a connection pool.
-	// The DSN creates todos.db in the current directory and sets two options:
+	// The DSN creates todos.db in the db/ directory and sets two options:
 	//   busy_timeout: wait up to 5s if the database is briefly locked, instead of failing
 	//   journal_mode(WAL): lets reads and writes overlap, which suits a web app
-	db, err := sql.Open("sqlite", "file:todos.db?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
+	db, err := sql.Open("sqlite", "file:db/todos.db?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		log.Fatal(err)
 	}

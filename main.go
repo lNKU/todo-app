@@ -1,12 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"embed"
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	// The blank identifier (_) imports this package only for its side effect:
+	// it registers a database driver named "sqlite" with database/sql.
+	_ "modernc.org/sqlite"
 )
 
 // The //go:embed line below is a compiler directive, not a comment: it bakes
@@ -26,7 +32,27 @@ func main() {
 	// a broken template should stop the program immediately.
 	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
 
-	s := &Server{store: NewStore(), tmpl: tmpl}
+	// sql.Open does NOT connect; it only prepares a connection pool.
+	// The DSN creates todos.db in the current directory and sets two options:
+	//   busy_timeout: wait up to 5s if the database is briefly locked, instead of failing
+	//   journal_mode(WAL): lets reads and writes overlap, which suits a web app
+	db, err := sql.Open("sqlite", "file:todos.db?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Ping forces a real connection, so a bad path or permission problem shows up now.
+	if err := db.Ping(); err != nil {
+		log.Fatalf("cannot open database: %v", err)
+	}
+
+	store, err := NewStore(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := &Server{store: store, tmpl: tmpl}
 
 	mux := http.NewServeMux()
 
@@ -40,7 +66,7 @@ func main() {
 	mux.HandleFunc("POST /todos/{id}/toggle", s.handleToggle)
 	mux.HandleFunc("DELETE /todos/{id}", s.handleDelete)
 
-	addr := ":8080"
+	addr := ":8087"
 	log.Printf("listening on http://localhost%s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -53,9 +79,21 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 	}
 }
 
+// serverError logs the real error for us, but shows the visitor a generic
+// message so internal details (like SQL errors) never leak into the page.
+func (s *Server) serverError(w http.ResponseWriter, err error) {
+	log.Printf("server error: %v", err)
+	http.Error(w, "something went wrong", http.StatusInternalServerError)
+}
+
 // handleIndex renders the full page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	data := struct{ Todos []Todo }{Todos: s.store.All()}
+	todos, err := s.store.All()
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	data := struct{ Todos []Todo }{Todos: todos}
 	s.render(w, "index.html", data)
 }
 
@@ -67,7 +105,11 @@ func (s *Server) handleAdd(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title is required", http.StatusBadRequest)
 		return
 	}
-	todo := s.store.Add(title)
+	todo, err := s.store.Add(title)
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
 	s.render(w, "todo-item", todo)
 }
 
@@ -78,9 +120,13 @@ func (s *Server) handleToggle(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	todo, ok := s.store.Toggle(id)
-	if !ok {
+	todo, err := s.store.Toggle(id)
+	if errors.Is(err, ErrNotFound) {
 		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, err)
 		return
 	}
 	s.render(w, "todo-item", todo)
@@ -90,8 +136,17 @@ func (s *Server) handleToggle(w http.ResponseWriter, r *http.Request) {
 // the <li> with nothing. (A 204 would make htmx skip the swap entirely.)
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || !s.store.Delete(id) {
+	if err != nil {
 		http.NotFound(w, r)
+		return
+	}
+	err = s.store.Delete(id)
+	if errors.Is(err, ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

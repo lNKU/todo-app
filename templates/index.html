@@ -1,11 +1,49 @@
 {{define "todo-item"}}
-<li class="todo{{if .Done}} done{{end}}">
+<li class="todo{{if .Done}} done{{end}}{{if .Moved}} moved{{end}}{{with .DueStatus}} due-{{.}}{{end}}">
+    <button class="star{{if .Starred}} starred{{end}}" aria-label="Important" aria-pressed="{{.Starred}}"
+        hx-post="/todos/{{.ID}}/star" hx-target="closest li" hx-swap="outerHTML">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+    </button>
     <input type="checkbox" {{if .Done}}checked{{end}} hx-post="/todos/{{.ID}}/toggle" hx-target="closest li"
         hx-swap="outerHTML">
     <span class="title">{{.Title}}</span>
+    {{with .DueDateLabel}}<span class="chip">{{.}}</span>{{end}}
+    {{with .DueTimeLabel}}<span class="chip">{{.}}</span>{{end}}
+    <button class="edit" aria-label="Edit" hx-get="/todos/{{.ID}}/edit" hx-target="closest li"
+        hx-swap="outerHTML">&#9998;</button>
     <button class="delete" aria-label="Delete" hx-delete="/todos/{{.ID}}" hx-target="closest li"
         hx-swap="outerHTML swap:200ms">&times;</button>
 </li>
+{{end}}
+{{define "todo-edit"}}
+<li class="todo editing">
+    <form class="edit-form" hx-put="/todos/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">
+        <input type="text" name="title" value="{{.Title}}" required autofocus autocomplete="off">
+        <input type="date" name="due_date" value="{{.DueDate}}" aria-label="Due date">
+        <input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time">
+        <button type="submit">Save</button>
+        <button type="button" class="cancel" hx-get="/todos/{{.ID}}" hx-target="closest li"
+            hx-swap="outerHTML">Cancel</button>
+    </form>
+</li>
+{{end}}
+{{define "todo-section"}}
+<div id="todo-section">
+    <nav class="filters" hx-target="#todo-section" hx-swap="outerHTML" hx-push-url="true">
+        <!-- <a href="/?filter=all" hx-get="/?filter=all" class="{{if eq .Filter `all`}}active{{end}}">All</a> -->
+        <a href="/?filter=starred" hx-get="/?filter=starred"
+            class="{{if eq .Filter `starred`}}active{{end}}">Starred</a>
+        <a href="/?filter=active" hx-get="/?filter=active" class="{{if eq .Filter `active`}}active{{end}}">In
+            Progress</a>
+        <a href="/?filter=done" hx-get="/?filter=done" class="{{if eq .Filter `done`}}active{{end}}">Completed</a>
+    </nav>
+    <ul id="todo-list">
+        {{range .Todos}}{{template "todo-item" .}}{{end}}
+    </ul>
+</div>
 {{end}}
 <!doctype html>
 <html lang="en">
@@ -13,7 +51,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Toodles Doodles</title>
+    <title>{{.Titlebar}}</title>
+    <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
@@ -22,15 +61,17 @@
     <main>
         <h1>Todo App!</h1>
 
-        <form hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
+        <form class="add-form" hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
             hx-on::after-request="if (event.detail.successful) this.reset()">
-            <input type="text" name="title" placeholder="Add a todo here!" required autofocus autocomplete="off">
-            <button type="submit">Add</button>
+            <input type="text" name="title" placeholder="{{.Placeholder}}" required autofocus autocomplete="off">
+            <button type="submit">Add Todo</button>
+            <div class="due-row">
+                <input type="date" name="due_date" value="{{.Today}}" aria-label="Due date">
+                <input type="time" name="due_time" value="08:00" aria-label="Due time">
+            </div>
         </form>
 
-        <ul id="todo-list">
-            {{range .Todos}}{{template "todo-item" .}}{{end}}
-        </ul>
+        {{template "todo-section" .}}
     </main>
 </body>
 

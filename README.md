@@ -1,13 +1,11 @@
 # Todo-App - A personal to-do list
 
----
-
-### Purpose\
+### Purpose \
 This app's purpose is two-fold: \first, it is meant to help me familiarize myself with the Go ecosystem and \second, is meant to act as a way to help me expand my skillset with a tool I can use myself.
 
 ---
 
-### License\
+### License \
 
 MIT License
 
@@ -31,5 +29,5 @@ SOFTWARE.
 
 ---
 
-### Disclaimer\
+### Disclaimer \
 This app was made with assistance from Claude - some code is meant to be used as templating until enhanced further.

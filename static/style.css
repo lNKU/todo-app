@@ -1,3 +1,17 @@
+@font-face {
+    font-family: "AppHeading";
+    src: url("/static/font/Orbitron-VariableFont_wght.ttf") format("truetype");
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "AppBody";
+    src: url("/static/font/CrimsonText-Regular.ttf") format("truetype");
+    font-weight: 600;
+    font-display: swap;
+}
+
 :root {
     --bg: #f6f7f9;
     --surface: #ffffff;
@@ -6,6 +20,8 @@
     --accent: #4f6df5;
     --border: #e3e6eb;
     --radius: 10px;
+    --on-accent: #ffffff;
+    --starred: #f2c94c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -13,9 +29,11 @@
         --bg: #14161a;
         --surface: #1d2025;
         --text: #e8eaed;
-        --muted: #6f7782;
+        --muted: #b0b4b9;
         --accent: #7b90ff;
         --border: #2b2f36;
+        --on-accent: #ffffff;
+        --success: #9aff56;
     }
 }
 
@@ -27,7 +45,7 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: "AppBody", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 main {
@@ -39,6 +57,8 @@ main {
 h1 {
     margin: 0 0 1.5rem;
     font-weight: 700;
+    text-align: center;
+    font-family: "AppHeading", system-ui, sans-serif;
 }
 
 form {
@@ -71,6 +91,14 @@ form button {
     font: inherit;
     font-weight: 600;
     cursor: pointer;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    transition: outline-color 300ms ease;
+}
+
+form button:hover,
+form button:focus-visible {
+    outline-color: var(--on-accent);
 }
 
 ul {
@@ -79,6 +107,12 @@ ul {
     padding: 0;
     display: grid;
     gap: 0.5rem;
+}
+
+button[type="submit"]:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    /* color: var(--on-accent); */
 }
 
 .todo {
@@ -102,9 +136,9 @@ ul {
 }
 
 .todo input[type="checkbox"] {
-    width: 1.1rem;
-    height: 1.1rem;
-    accent-color: var(--accent);
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--success);
     cursor: pointer;
 }
 
@@ -112,7 +146,7 @@ ul {
     border: 0;
     background: none;
     color: var(--muted);
-    font-size: 1.4rem;
+    font-size: 1.7rem;
     line-height: 1;
     cursor: pointer;
 }
@@ -132,3 +166,206 @@ ul {
 }
 
 /* start invisible, then fade in */
+
+/* inline editing */
+.edit {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 1.45rem;
+    margin-right: -0.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.edit:hover {
+    color: var(--accent);
+}
+
+/* the edit form is a <form>, so it would inherit the add-form's bottom margin */
+.edit-form {
+    flex: 1;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.edit-form input[type="text"] {
+    padding: 0.4rem 0.6rem;
+    flex: 1 1 100%;
+}
+
+.edit-form input[type="date"],
+.edit-form input[type="time"] {
+    padding: 0.4rem 0.5rem;
+}
+
+.edit-form .cancel {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+}
+
+/* filters */
+.filters {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.filters a {
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 300ms ease;
+}
+
+.filters a:hover {
+    border-color: var(--accent);
+}
+
+.filters a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.filters a.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+/* star (important) */
+.star {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    margin-right: -0.6rem;
+}
+
+.star svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.star polygon {
+    fill: transparent;
+    stroke: var(--star, #f2c94c);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    transition: fill 300ms ease;
+}
+
+.star:hover polygon {
+    fill: var(--star, #f2c94c);
+    fill-opacity: 0.55;
+}
+
+.star.starred polygon {
+    fill: var(--star, #f2c94c);
+    fill-opacity: 1;
+}
+
+/* due date and time chips: same border, radius and surface as a todo row */
+.chip {
+    flex-shrink: 0;
+    padding: 0.15rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    margin-left: -0.4rem;
+}
+
+.todo.done .chip {
+    opacity: 0.6;
+}
+
+/* date and time inputs, styled to match the text input */
+input[type="date"],
+input[type="time"] {
+    padding: 0.7rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    color-scheme: light dark;
+    /* lets the browser draw dark pickers and icons in dark mode */
+}
+
+input[type="date"]:focus,
+input[type="time"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* add form: title and button on the first row, due date and time on a second row */
+.add-form {
+    flex-wrap: wrap;
+}
+
+.due-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-basis: 100%;
+}
+
+/* a todo that just moved (starred or unstarred) slides in at its new position */
+@keyframes todo-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(-14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.todo.moved {
+    animation: todo-arrive 400ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .todo.moved {
+        animation: none;
+    }
+}
+
+/* urgency: border and a light tint change as the due date gets closer */
+.todo.due-near {
+    --due: #d9a82f;
+}
+
+.todo.due-soon {
+    --due: #f08c3a;
+}
+
+.todo.due-overdue {
+    --due: #e5484d;
+}
+
+.todo.due-near,
+.todo.due-soon,
+.todo.due-overdue {
+    border-color: var(--due);
+    background: color-mix(in srgb, var(--due) 12%, var(--surface));
+}
+
+.todo.due-near .chip,
+.todo.due-soon .chip,
+.todo.due-overdue .chip {
+    border-color: var(--due);
+}

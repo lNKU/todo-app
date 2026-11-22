@@ -12,8 +12,11 @@
     <span class="title">{{.Title}}</span>
     {{with .DueDateLabel}}<span class="chip">{{.}}</span>{{end}}
     {{with .DueTimeLabel}}<span class="chip">{{.}}</span>{{end}}
-    <button class="edit" aria-label="Edit" hx-get="/todos/{{.ID}}/edit" hx-target="closest li"
-        hx-swap="outerHTML">&#9998;</button>
+    <button class="edit" aria-label="Edit" hx-get="/todos/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 3a2.828 2.828 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+        </svg>
+    </button>
     <button class="delete" aria-label="Delete" hx-delete="/todos/{{.ID}}" hx-target="closest li"
         hx-swap="outerHTML swap:200ms">&times;</button>
 </li>
@@ -23,7 +26,12 @@
     <form class="edit-form" hx-put="/todos/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">
         <input type="text" name="title" value="{{.Title}}" required autofocus autocomplete="off">
         <input type="date" name="due_date" value="{{.DueDate}}" aria-label="Due date">
-        <input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time">
+        <select name="due_time" aria-label="Due time">
+            <option value="" {{if not .DueTime}} selected{{end}}>No time</option>
+            {{range .TimeOptions}}
+            <option value="{{.Value}}" {{if eq .Value $.DueTime}} selected{{end}}>{{.Label}}</option>
+            {{end}}
+        </select>
         <button type="submit">Save</button>
         <button type="button" class="cancel" hx-get="/todos/{{.ID}}" hx-target="closest li"
             hx-swap="outerHTML">Cancel</button>
@@ -67,7 +75,12 @@
             <button type="submit">Add Todo</button>
             <div class="due-row">
                 <input type="date" name="due_date" value="{{.Today}}" aria-label="Due date">
-                <input type="time" name="due_time" value="08:00" aria-label="Due time">
+                <select name="due_time" aria-label="Due time">
+                    <option value="">No time</option>
+                    {{range .TimeOptions}}
+                    <option value="{{.Value}}" {{if eq .Value `08:00`}} selected{{end}}>{{.Label}}</option>
+                    {{end}}
+                </select>
             </div>
         </form>
 

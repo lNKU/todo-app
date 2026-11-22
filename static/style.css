@@ -149,6 +149,7 @@ button[type="submit"]:hover {
     font-size: 1.7rem;
     line-height: 1;
     cursor: pointer;
+    transition: color 300ms ease;
 }
 
 .delete:hover {
@@ -169,13 +170,26 @@ button[type="submit"]:hover {
 
 /* inline editing */
 .edit {
+    display: inline-flex;
+    padding: 0;
     border: 0;
     background: none;
     color: var(--muted);
     font-size: 1.45rem;
-    margin-right: -0.8rem;
+    margin-right: -0.6rem;
     line-height: 1;
     cursor: pointer;
+    transition: color 300ms ease;
+}
+
+.edit svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .edit:hover {
@@ -195,7 +209,7 @@ button[type="submit"]:hover {
 }
 
 .edit-form input[type="date"],
-.edit-form input[type="time"] {
+.edit-form select {
     padding: 0.4rem 0.5rem;
 }
 
@@ -293,7 +307,7 @@ button[type="submit"]:hover {
 
 /* date and time inputs, styled to match the text input */
 input[type="date"],
-input[type="time"] {
+select {
     padding: 0.7rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -305,7 +319,7 @@ input[type="time"] {
 }
 
 input[type="date"]:focus,
-input[type="time"]:focus {
+select:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }

@@ -177,12 +177,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Placeholder string
 		Titlebar    string
 		Today       string
+		TimeOptions []TimeOption
 	}{
 		Todos:       todos,
 		Filter:      filter,
 		Placeholder: placeholders[rand.IntN(len(placeholders))],
 		Titlebar:    titlebars[rand.IntN(len(titlebars))],
 		Today:       time.Now().Format("2006-01-02"),
+		TimeOptions: timeOptions(""),
 	}
 	// The same URL serves two kinds of request. htmx asks only for the list
 	// section; a normal browser visit (or refresh) gets the whole page.

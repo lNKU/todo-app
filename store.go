@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -43,6 +44,40 @@ func (t Todo) DueTimeLabel() string {
 		return ""
 	}
 	return d.Format("3:04 PM")
+}
+
+// TimeOption is one entry in the due-time dropdown.
+type TimeOption struct {
+	Value string // "14:30", what the form sends
+	Label string // "2:30 PM", what the person sees
+}
+
+// timeOptions returns the dropdown choices: every 15 minutes across the day.
+// If extra is a valid time that isn't on that grid (say "14:17", saved back
+// when the time box allowed any minute), it is slotted in so editing the todo
+// doesn't silently change its time.
+func timeOptions(extra string) []TimeOption {
+	var mins []int // minutes since midnight
+	for m := 0; m < 24*60; m += 15 {
+		mins = append(mins, m)
+	}
+	if t, err := time.Parse("15:04", extra); err == nil {
+		if m := t.Hour()*60 + t.Minute(); m%15 != 0 {
+			mins = append(mins, m)
+			sort.Ints(mins)
+		}
+	}
+	opts := make([]TimeOption, len(mins))
+	for i, m := range mins {
+		t := time.Date(2000, 1, 1, m/60, m%60, 0, 0, time.UTC) // the date is irrelevant
+		opts[i] = TimeOption{Value: t.Format("15:04"), Label: t.Format("3:04 PM")}
+	}
+	return opts
+}
+
+// TimeOptions lets the edit form's template ask a todo for its own choices.
+func (t Todo) TimeOptions() []TimeOption {
+	return timeOptions(t.DueTime)
 }
 
 // DueStatus says how urgent the due date is: "overdue", "soon" (within 24

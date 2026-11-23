@@ -26,12 +26,7 @@
     <form class="edit-form" hx-put="/todos/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">
         <input type="text" name="title" value="{{.Title}}" required autofocus autocomplete="off">
         <input type="date" name="due_date" value="{{.DueDate}}" aria-label="Due date">
-        <select name="due_time" aria-label="Due time">
-            <option value="" {{if not .DueTime}} selected{{end}}>No time</option>
-            {{range .TimeOptions}}
-            <option value="{{.Value}}" {{if eq .Value $.DueTime}} selected{{end}}>{{.Label}}</option>
-            {{end}}
-        </select>
+        {{template "time-picker" .DueTime}}
         <button type="submit">Save</button>
         <button type="button" class="cancel" hx-get="/todos/{{.ID}}" hx-target="closest li"
             hx-swap="outerHTML">Cancel</button>
@@ -53,6 +48,24 @@
     </ul>
 </div>
 {{end}}
+{{define "time-picker"}}
+<div class="time-picker" data-default="{{.}}">
+    <input type="hidden" name="due_time" value="{{.}}">
+    <button type="button" class="time-trigger" aria-haspopup="dialog" aria-expanded="false"></button>
+    <div class="time-panel" role="dialog" aria-label="Choose a time" hidden>
+        <div class="wheels">
+            <div class="wheel" data-wheel="hour" tabindex="0" aria-label="Hour"></div>
+            <div class="wheel" data-wheel="minute" tabindex="0" aria-label="Minute"></div>
+            <div class="wheel" data-wheel="ampm" tabindex="0" aria-label="AM or PM"></div>
+            <div class="wheel-band"></div>
+        </div>
+        <div class="time-actions">
+            <button type="button" class="time-clear">No time</button>
+            <button type="button" class="time-done">Done</button>
+        </div>
+    </div>
+</div>
+{{end}}
 <!doctype html>
 <html lang="en">
 
@@ -63,6 +76,7 @@
     <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="/static/timepicker.js" defer></script>
 </head>
 
 <body>
@@ -75,12 +89,7 @@
             <button type="submit">Add Todo</button>
             <div class="due-row">
                 <input type="date" name="due_date" value="{{.Today}}" aria-label="Due date">
-                <select name="due_time" aria-label="Due time">
-                    <option value="">No time</option>
-                    {{range .TimeOptions}}
-                    <option value="{{.Value}}" {{if eq .Value `08:00`}} selected{{end}}>{{.Label}}</option>
-                    {{end}}
-                </select>
+                {{template "time-picker" `08:00`}}
             </div>
         </form>
 

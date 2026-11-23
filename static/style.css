@@ -383,3 +383,111 @@ select:focus {
 .todo.due-overdue .chip {
     border-color: var(--due);
 }
+
+/* time picker: a button that opens a panel with iOS-style scroll wheels */
+.time-picker {
+    position: relative;
+}
+
+.time-picker button {
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 400;
+    outline: none;
+    transition: border-color 300ms ease;
+}
+
+.time-picker button:hover,
+.time-picker button:focus-visible {
+    border-color: var(--accent);
+}
+
+.time-trigger {
+    min-width: 6.5rem;
+    text-align: left;
+}
+
+.edit-form .time-trigger {
+    padding: 0.4rem 0.5rem;
+}
+
+.time-panel {
+    position: absolute;
+    top: calc(100% 0.35rem);
+    left: 0;
+    z-index: 20;
+    padding: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.wheels {
+    --item: 2rem;
+    position: relative;
+    display: flex;
+    gap: 0.25rem;
+}
+
+.wheel {
+    width: 3.5rem;
+    height: calc(var(--item) * 5);
+    padding-block: calc(var(--item) * 2);
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
+    -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+}
+
+.wheel::-webkit-scrollbar {
+    display: none;
+}
+
+.wheel-item {
+    height: var(--item);
+    line-height: var(--item);
+    text-align: center;
+    scroll-snap-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.wheel-item.is-selected {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* the highlighted strip across the middle row */
+.wheel-band {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(var(--item) * 2);
+    height: var(--item);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    pointer-events: none;
+}
+
+.time-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.time-actions button {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+.time-picker .time-done {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}

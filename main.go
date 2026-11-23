@@ -107,8 +107,8 @@ func main() {
 	mux.HandleFunc("GET /todos/{id}/edit", s.handleEditForm)
 	mux.HandleFunc("PUT /todos/{id}", s.handleUpdate)
 
-	addr := ":8087"
-	log.Printf("listening on http://localhost%s", addr)
+	addr := "127.0.0.1:8087"
+	log.Printf("listening on http://%s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
@@ -125,6 +125,27 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 func (s *Server) serverError(w http.ResponseWriter, err error) {
 	log.Printf("server error: %v", err)
 	http.Error(w, "something went wrong", http.StatusInternalServerError)
+}
+
+// pathID reads {id} from the URL. On failure it writes the 404 itself, so the
+// caller only has to return.
+func pathID(w http.ResponseWriter, r *http.Request) (int, bool) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return 0, false
+	}
+	return id, true
+}
+
+// storeError turns an error from the store into the right response: a 404
+// when the todo doesn't exist, a 500 for anything else.
+func (s *Server) storeError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	s.serverError(w, err)
 }
 
 // normalizeFilter maps whatever is in the URL to one of the three filters we
@@ -224,25 +245,20 @@ func (s *Server) handleAdd(w http.ResponseWriter, r *http.Request) {
 
 // handleToggle flips a todo's Done state and responds with the updated <li>.
 func (s *Server) handleToggle(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
+	id, ok := pathID(w, r)
+	if !ok {
 		return
 	}
 	todo, err := s.store.Toggle(id)
-	if errors.Is(err, ErrNotFound) {
-		http.NotFound(w, r)
-		return
-	}
 	if err != nil {
-		s.serverError(w, err)
+		s.storeError(w, r, err)
 		return
 	}
 	// Toggling can move a todo out of the current filter (e.g. finishing a
 	// todo while viewing "Active"). An empty response removes its <li>.
 	if !matchesFilter(currentFilter(r), todo) {
 		// Override the swap style for this response only, so the item fades out
-		// (same 200ms the delete button uses) instead of vanishing instantly.
+		// (same timing the delete button uses) instead of vanishing instantly.
 		w.Header().Set("HX-Reswap", "outerHTML swap:400ms")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -253,18 +269,12 @@ func (s *Server) handleToggle(w http.ResponseWriter, r *http.Request) {
 // handleDelete removes a todo. The empty 200 response tells htmx to replace
 // the <li> with nothing. (A 204 would make htmx skip the swap entirely.)
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
+	id, ok := pathID(w, r)
+	if !ok {
 		return
 	}
-	err = s.store.Delete(id)
-	if errors.Is(err, ErrNotFound) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, err)
+	if err := s.store.Delete(id); err != nil {
+		s.storeError(w, r, err)
 		return
 	}
 	w.Header().Set("HX-Reswap", "outerHTML swap:400ms")
@@ -275,18 +285,13 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 // template. "Show" and "edit form" differ only in which template they use, so
 // they share this helper instead of repeating the lookup and error handling.
 func (s *Server) renderTodo(w http.ResponseWriter, r *http.Request, tmplName string) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
+	id, ok := pathID(w, r)
+	if !ok {
 		return
 	}
 	todo, err := s.store.Get(id)
-	if errors.Is(err, ErrNotFound) {
-		http.NotFound(w, r)
-		return
-	}
 	if err != nil {
-		s.serverError(w, err)
+		s.storeError(w, r, err)
 		return
 	}
 	s.render(w, tmplName, todo)
@@ -304,9 +309,8 @@ func (s *Server) handleEditForm(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdate saves a new title and responds with the normal view of the todo.
 func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
+	id, ok := pathID(w, r)
+	if !ok {
 		return
 	}
 	title := strings.TrimSpace(r.FormValue("title"))
@@ -320,31 +324,21 @@ func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	todo, err := s.store.Update(id, title, dueDate, dueTime)
-	if errors.Is(err, ErrNotFound) {
-		http.NotFound(w, r)
-		return
-	}
 	if err != nil {
-		s.serverError(w, err)
+		s.storeError(w, r, err)
 		return
 	}
 	s.render(w, "todo-item", todo)
 }
 
-// handleStar flips a todo's starred state and responds with the updated <li>.
+// handleStar flips a todo's starred state and responds with updated <li> section.
 func (s *Server) handleStar(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
+	id, ok := pathID(w, r)
+	if !ok {
 		return
 	}
-	_, err = s.store.ToggleStar(id)
-	if errors.Is(err, ErrNotFound) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, err)
+	if _, err := s.store.ToggleStar(id); err != nil {
+		s.storeError(w, r, err)
 		return
 	}
 	// Starring changes where this todo belongs in the list, so instead of

@@ -19,7 +19,7 @@ type Todo struct {
 	Moved   bool   // set only while rendering, to animate a todo that just moved; never stored
 }
 
-// DueDateLabel turns the stored "2026-11-30" into "Nov 30" for display, adding
+// DueDateLabel turns the stored "2026-11-30" into "Mon, Nov 30" for display, adding
 // the year only when it isn't the current one. Templates can call any method
 // on the value they're given, so the template uses this as {{.DueDateLabel}}.
 // It returns "" when there is no (valid) date.
@@ -45,8 +45,8 @@ func (t Todo) DueTimeLabel() string {
 	return d.Format("3:04 PM")
 }
 
-// DueStatus says how urgent the due date is: "overdue", "soon" (within 24
-// hours), "near" (within 3 days), or "" when the todo is done, has no due
+// DueStatus says how urgent the due date is: "overdue", "soon" (within 6
+// hours), "near" (within 12 hours), or "" when the todo is done, has no due
 // date, or is further away. The thresholds are right here, so they are easy
 // to change.
 func (t Todo) DueStatus() string {
@@ -120,6 +120,22 @@ func NewStore(db *sql.DB) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// migrations lists the schema upgrades in order: migrations[0] brings the
+// database to version 1, migrations[1] to version 2, and so on. To change the
+// schema, add a new entry at the end. Never edit or reorder old entries, because
+// they have already run on existing databases.
+var migrations = [][]string{
+	// version 1: starred
+	{`ALTER TABLE todos ADD COLUMN starred INTEGER NOT NULL DEFAULT 0`},
+
+	// version 2: due date and time. '' means "no due date/time", so Go can
+	// scan the columns into plain strings.
+	{
+		`ALTER TABLE todos ADD COLUMN due_date TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE todos ADD COLUMN due_time TEXT NOT NULL DEFAULT ''`,
+	},
+}
+
 // migrate brings the database schema up to date. SQLite has no
 // "ADD COLUMN IF NOT EXISTS", so we record a schema version inside the
 // database itself (PRAGMA user_version) and run each step only once.
@@ -128,54 +144,55 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return err
 	}
-
-	if version < 1 {
-		// A transaction makes the column and the version bump succeed or fail
-		// together. Otherwise a crash between them would leave the column added
-		// but the version unchanged, and the next start would fail trying to add it again.
-		tx, err := db.Begin()
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback() // does nothing once Commit has succeeded
-
-		if _, err := tx.Exec(`ALTER TABLE todos ADD COLUMN starred INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`PRAGMA user_version = 1`); err != nil {
-			return err
-		}
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-	}
-
-	if version < 2 {
-		// Same pattern as above, one transaction per schema version.
-		// '' means "no due date/time", so Go can scan the columns into plain strings.
-		tx, err := db.Begin()
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback() // does nothing once Commit has succeeded
-
-		if _, err := tx.Exec(`ALTER TABLE todos ADD COLUMN due_date TEXT NOT NULL DEFAULT ''`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`ALTER TABLE todos ADD COLUMN due_time TEXT NOT NULL DEFAULT ''`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`PRAGMA user_version = 2`); err != nil {
-			return err
-		}
-		if err := tx.Commit(); err != nil {
-			return err
+	// Run every migration this database hasn't seen yet. A database at
+	// version 2 starts the loop at index 2, finds nothing left, and does no work.
+	for i := version; i < len(migrations); i++ {
+		if err := applyMigration(db, i+1, migrations[i]); err != nil {
+			return fmt.Errorf("migration %d: %w", i+1, err)
 		}
 	}
 	return nil
 }
 
-// All returns every todo, oldest first.
+// applyMigration runs one version's statements and records the new version.
+func applyMigration(db *sql.DB, version int, stmts []string) error {
+	// A transaction makes the columns and the version bump succeed or fail
+	// together. Otherwise a crash between them would leave a column added but
+	// the version unchanged, and the next start would fail trying to add it again.
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() // does nothing once Commit has succeeded
+
+	for _, stmt := range stmts {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	// PRAGMA can't take a ? placeholder, so the number is formatted into the
+	// text. That's safe here because version is an int we control.
+	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, version)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// queryTodo runs a query that returns one todo row (a SELECT, or an INSERT or
+// UPDATE with RETURNING) and scans it. A query that matches no row becomes
+// ErrNotFound, so every caller reports "missing" the same way.
+func (s *Store) queryTodo(query string, args ...any) (Todo, error) {
+	t, err := scanTodo(s.db.QueryRow(query, args...))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Todo{}, ErrNotFound
+	}
+	if err != nil {
+		return Todo{}, err
+	}
+	return t, nil
+}
+
+// All returns every todo, oldest first - unless starred - then those come first.
 func (s *Store) All(filter string) ([]Todo, error) {
 	// The filter only chooses between fixed SQL snippets below. It is never
 	// pasted into the query, so there is no injection risk here.
@@ -212,29 +229,18 @@ func (s *Store) All(filter string) ([]Todo, error) {
 // Add inserts a todo and returns it, including its new ID.
 // RETURNING makes SQLite hand back the stored row in the same statement.
 func (s *Store) Add(title, dueDate, dueTime string) (Todo, error) {
-	t, err := scanTodo(s.db.QueryRow(
+	return s.queryTodo(
 		`INSERT INTO todos (title, due_date, due_time) VALUES (?, ?, ?) RETURNING `+todoColumns,
 		title, dueDate, dueTime,
-	))
-	if err != nil {
-		return Todo{}, err
-	}
-	return t, nil
+	)
 }
 
 // Toggle flips Done and returns the updated todo.
 func (s *Store) Toggle(id int) (Todo, error) {
-	t, err := scanTodo(s.db.QueryRow(
+	return s.queryTodo(
 		`UPDATE todos SET done = NOT done WHERE id = ? RETURNING `+todoColumns,
 		id,
-	))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, ErrNotFound // no row matched that id
-	}
-	if err != nil {
-		return Todo{}, err
-	}
-	return t, nil
+	)
 }
 
 // Delete removes a todo. Exec is for statements where we don't need rows back.
@@ -255,46 +261,25 @@ func (s *Store) Delete(id int) error {
 
 // Get returns one todo by ID. The edit form and the cancel button both need it.
 func (s *Store) Get(id int) (Todo, error) {
-	t, err := scanTodo(s.db.QueryRow(
+	return s.queryTodo(
 		`SELECT `+todoColumns+` FROM todos WHERE id = ?`,
 		id,
-	))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, ErrNotFound
-	}
-	if err != nil {
-		return Todo{}, err
-	}
-	return t, nil
+	)
 }
 
-// UpdateTitle changes a todo's title and returns the updated row. It follows
-// the same UPDATE ... RETURNING pattern as Toggle.
+// Update changes a todo's title and due date/time and returns the updated row.
+// It follows the same UPDATE ... RETURNING pattern as Toggle.
 func (s *Store) Update(id int, title, dueDate, dueTime string) (Todo, error) {
-	t, err := scanTodo(s.db.QueryRow(
+	return s.queryTodo(
 		`UPDATE todos SET title = ?, due_date = ?, due_time = ? WHERE id = ? RETURNING `+todoColumns,
 		title, dueDate, dueTime, id,
-	))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, ErrNotFound
-	}
-	if err != nil {
-		return Todo{}, err
-	}
-	return t, nil
+	)
 }
 
 // ToggleStar flips Starred and returns the updated todo.
 func (s *Store) ToggleStar(id int) (Todo, error) {
-	t, err := scanTodo(s.db.QueryRow(
+	return s.queryTodo(
 		`UPDATE todos SET starred = NOT starred WHERE id = ? RETURNING `+todoColumns,
 		id,
-	))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, ErrNotFound
-	}
-	if err != nil {
-		return Todo{}, err
-	}
-	return t, nil
+	)
 }

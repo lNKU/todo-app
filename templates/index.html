@@ -18,7 +18,7 @@
         </svg>
     </button>
     <button class="delete" aria-label="Delete" hx-delete="/todos/{{.ID}}" hx-target="closest li"
-        hx-swap="outerHTML swap:200ms">&times;</button>
+        hx-swap="outerHTML">&times;</button>
 </li>
 {{end}}
 {{define "todo-edit"}}

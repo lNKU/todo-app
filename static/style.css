@@ -1,7 +1,7 @@
 @font-face {
     font-family: "AppHeading";
     src: url("/static/font/Orbitron-VariableFont_wght.ttf") format("truetype");
-    font-weight: 400;
+    font-weight: 400 900;
     font-display: swap;
 }
 
@@ -21,7 +21,8 @@
     --border: #e3e6eb;
     --radius: 10px;
     --on-accent: #ffffff;
-    --starred: #f2c94c;
+    --success: #9aff56;
+    --star: #f2c94c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,7 +33,6 @@
         --muted: #b0b4b9;
         --accent: #7b90ff;
         --border: #2b2f36;
-        --success: #9aff56;
     }
 }
 
@@ -86,7 +86,7 @@ form button {
     border: 0;
     border-radius: var(--radius);
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
@@ -152,14 +152,15 @@ ul {
 /* htmx adds these classes automatically during swaps */
 .todo.htmx-swapping {
     opacity: 0;
+    /* fade out while deleting */
+    transition: opacity 400ms ease-out;
 }
 
-/* fade out while deleting */
 .todo.htmx-added {
+    /* start invisible, then fade in */
     opacity: 0;
 }
 
-/* start invisible, then fade in */
 
 /* inline editing */
 .edit {
@@ -263,19 +264,19 @@ ul {
 
 .star polygon {
     fill: transparent;
-    stroke: var(--star, #f2c94c);
+    stroke: var(--star);
     stroke-width: 2;
     stroke-linejoin: round;
     transition: fill 300ms ease;
 }
 
 .star:hover polygon {
-    fill: var(--star, #f2c94c);
+    fill: var(--star);
     fill-opacity: 0.55;
 }
 
 .star.starred polygon {
-    fill: var(--star, #f2c94c);
+    fill: var(--star);
     fill-opacity: 1;
 }
 
@@ -405,7 +406,7 @@ input[type="date"]:focus {
 
 .time-panel {
     position: absolute;
-    top: calc(100% 0.35rem);
+    top: calc(100% + 0.35rem);
     left: 0;
     z-index: 20;
     padding: 0.5rem;

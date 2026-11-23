@@ -165,7 +165,6 @@ func matchesFilter(filter string, t Todo) bool {
 // handleIndex renders the full page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	filter := normalizeFilter(r.URL.Query().Get("filter"))
-	//log.Printf("filter=%q url=%q", filter, r.URL.String())
 	todos, err := s.store.All(filter)
 	if err != nil {
 		s.serverError(w, err)
@@ -177,14 +176,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Placeholder string
 		Titlebar    string
 		Today       string
-		TimeOptions []TimeOption
 	}{
 		Todos:       todos,
 		Filter:      filter,
 		Placeholder: placeholders[rand.IntN(len(placeholders))],
 		Titlebar:    titlebars[rand.IntN(len(titlebars))],
 		Today:       time.Now().Format("2006-01-02"),
-		TimeOptions: timeOptions(""),
 	}
 	// The same URL serves two kinds of request. htmx asks only for the list
 	// section; a normal browser visit (or refresh) gets the whole page.
@@ -215,11 +212,6 @@ func (s *Server) handleAdd(w http.ResponseWriter, r *http.Request) {
 	todo, err := s.store.Add(title, dueDate, dueTime)
 	if err != nil {
 		s.serverError(w, err)
-		return
-	}
-	// A new todo is never done, so it doesn't belong in the "Done" list.
-	if !matchesFilter(currentFilter(r), todo) {
-		w.WriteHeader(http.StatusOK)
 		return
 	}
 	// A new todo is never done, so it doesn't belong in the "Done" list.
@@ -370,7 +362,6 @@ func (s *Server) handleStar(w http.ResponseWriter, r *http.Request) {
 	// The star button targets its own <li>. This header redirects the
 	// response to the whole list section for this one case.
 	w.Header().Set("HX-Retarget", "#todo-section")
-	// w.Header().Set("HX-Reswap", "outerHTML transition:true")
 	data := struct {
 		Todos  []Todo
 		Filter string

@@ -32,7 +32,6 @@
         --muted: #b0b4b9;
         --accent: #7b90ff;
         --border: #2b2f36;
-        --on-accent: #ffffff;
         --success: #9aff56;
     }
 }
@@ -109,12 +108,6 @@ ul {
     gap: 0.5rem;
 }
 
-button[type="submit"]:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    /* color: var(--on-accent); */
-}
-
 .todo {
     display: flex;
     align-items: center;
@@ -175,7 +168,6 @@ button[type="submit"]:hover {
     border: 0;
     background: none;
     color: var(--muted);
-    font-size: 1.45rem;
     margin-right: -0.6rem;
     line-height: 1;
     cursor: pointer;
@@ -208,8 +200,7 @@ button[type="submit"]:hover {
     flex: 1 1 100%;
 }
 
-.edit-form input[type="date"],
-.edit-form select {
+.edit-form input[type="date"] {
     padding: 0.4rem 0.5rem;
 }
 
@@ -306,8 +297,7 @@ button[type="submit"]:hover {
 }
 
 /* date and time inputs, styled to match the text input */
-input[type="date"],
-select {
+input[type="date"] {
     padding: 0.7rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -318,8 +308,7 @@ select {
     /* lets the browser draw dark pickers and icons in dark mode */
 }
 
-input[type="date"]:focus,
-select:focus {
+input[type="date"]:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
@@ -482,8 +471,8 @@ select:focus {
 }
 
 .time-actions button {
-    padding: 0.35rem 0.8rem;
-    font-size: 0.85rem;
+    padding: 0.25rem 0.8rem;
+    font-size: 0.95rem;
 }
 
 .time-picker .time-done {

@@ -36,7 +36,6 @@
 {{define "todo-section"}}
 <div id="todo-section">
     <nav class="filters" hx-target="#todo-section" hx-swap="outerHTML" hx-push-url="true">
-        <!-- <a href="/?filter=all" hx-get="/?filter=all" class="{{if eq .Filter `all`}}active{{end}}">All</a> -->
         <a href="/?filter=starred" hx-get="/?filter=starred"
             class="{{if eq .Filter `starred`}}active{{end}}">Starred</a>
         <a href="/?filter=active" hx-get="/?filter=active" class="{{if eq .Filter `active`}}active{{end}}">In
